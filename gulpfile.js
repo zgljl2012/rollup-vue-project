@@ -16,7 +16,15 @@ var paths = {
     assets: 'src/assets/**/*'
 };
 
+var target = {
+    path: "./dist/",
+    js: "./dist/js/",
+    styles: "./dist/styles/",
+    assets: "./dist/assets/"
+}
+
 var browserSync = require('browser-sync').create();
+var reload      = browserSync.reload;
 
 //使用时第二个参数可以忽略  
 function mkdir(dirpath, dirname) {
@@ -50,25 +58,25 @@ gulp.task('assets', function () {
     return gulp.src(paths.assets)
         // Pass in options to the task
         .pipe(imagemin({ optimizationLevel: 5 }))
-        .pipe(gulp.dest('./dist/assets'))
+        .pipe(gulp.dest(target.assets))
         .pipe(browserSync.stream());
 });
 
 gulp.task("index", function () {
     return gulp.src("index.html")
-        .pipe(gulp.dest("./dist/"))
+        .pipe(gulp.dest(target.path))
         .pipe(browserSync.stream());
 })
 
 gulp.task("vue", function () {
-    mkdir("./dist/styles")
-    mkdir("./dist/js")
+    mkdir(target.styles)
+    mkdir(target.js)
     return rollup.rollup({
         entry: "./src/main.js",
         plugins: [
             vue({
                 css(style, styles, compiler) {
-                    fs.writeFileSync('./dist/styles/bundle.css', style)
+                    fs.writeFileSync(target.styles + 'bundle.css', style)
                 }
             }),
             replace({
@@ -82,28 +90,32 @@ gulp.task("vue", function () {
         bundle.write({
             format: "umd",
             moduleName: "library",
-            dest: "./dist/js/bundle.js",
+            dest: target.js + "bundle.js",
             sourceMap: true
         });
     })
 })
 
-gulp.task('build', ["assets", "index", "vue"], function () {
-    return gulp.src("./dist/js/bundle.js")
+gulp.task("js", ["vue"], function(){
+    return gulp.src(target.js + "bundle.js")
         .pipe(uglify())
         .pipe(rename({ suffix: ".min" }))
-        .pipe(gulp.dest("./dist/js/"))
+        .pipe(gulp.dest(target.js))
         .pipe(browserSync.stream());
+})
+
+gulp.task('build', ["assets", "index", "js"], function () {
+    
 });
 
 gulp.task("watch", function () {
     browserSync.init({
-            server: "./dist/"
+        server: target.path
     });
-    gulp.watch(paths.scripts, ['build']);
+    gulp.watch(paths.scripts, ['js']);
     gulp.watch(paths.assets, ['assets']);
     gulp.watch("index.html", ["index"])
-    gulp.watch("*.html").on('change', browserSync.reload);
+    gulp.watch("*.html").on('change', reload);
 })
 
-gulp.task("default", ["build", "assets", "watch"])
+gulp.task("default", ["build", "watch"])
